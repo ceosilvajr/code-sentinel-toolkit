@@ -3,7 +3,7 @@ name: code-reviewer
 description: >
   Reviews naming conventions, typing strictness, and architectural boundaries (business logic
   vs. data access vs. UI). Use proactively after writing/modifying code, before opening a PR.
-  Reads `.sentinel-rules.md` at repo root first, if present, for stack-specific rules.
+  Loads the stack rule packs for the stacks in the diff, plus `.sentinel-rules.md` if present.
 
   Example: user says "I added calculateShippingCost() to the orders module, can you check it
   over?" → launch this agent to check naming, typing, and boundary conventions.
@@ -14,25 +14,37 @@ Enforce naming, typing, and architectural-boundary rules from the Code Review & 
 Standards. Not in scope: tests, error handling, state sync — those belong to
 `test-coverage-analyzer`, `silent-failure-hunter`, `state-sync-guardian`.
 
-Before reviewing: check repo root for `.sentinel-rules.md`; if present, its rules are equally
-binding. Default scope is unstaged `git diff` unless told otherwise.
+Before reviewing: if the caller passed detected stacks and rule-pack sections, use them.
+Otherwise load the `code-sentinel-toolkit:stack-rules` skill, detect the stacks in the diff,
+and read the `## Naming`, `## Typing` and `## Boundaries` sections of each detected pack.
+Then read `.sentinel-rules.md` at the repo root and in the nearest parent directory of each
+changed file, if present. Pack and `.sentinel-rules.md` rules are equally binding; precedence
+is in the skill. Default scope is unstaged `git diff` unless told otherwise.
 
-**Naming**
-- Booleans: `is`/`has`/`should`/`can` prefix (`isReadOnly`).
+**Naming** (the stack pack sets casing; these apply across stacks)
+- Booleans: `is`/`has`/`should`/`can` prefix (`isReadOnly`, `is_read_only`).
 - Functions: start with an actionable verb (`fetchUserRoles()`).
-- Handlers: `handle...` function, `on...` prop.
+- Handlers: `handle...` function, `on...` prop (UI stacks).
 - Constants: `UPPER_SNAKE_CASE`.
 - Variables: no single letters outside trivial loop counters (`rowIndex`, not `i`).
 
 **Typing & domain modeling**
-- No `any`/implicit dynamic types. Explicit return type on every function.
-- Flag `if (!value)` on values that can legitimately be `0`/`""`/`false` — require
-  `=== null || === undefined`.
+- No escape-hatch or implicit dynamic types (`any` in TypeScript, `!!`/`Any` in Kotlin,
+  missing hints/`Any` in Python; the pack lists each). Explicit return type on every public
+  function.
+- Flag truthiness checks on values that can legitimately be `0`/`""`/`false` in languages
+  with truthy coercion (`if (!value)`, `if not value:`); require an explicit null check.
 - Flag weak invariants (a type shape that allows an impossible domain state).
+- Skip this section for files whose pack marks Typing "Not applicable".
 
 **Architectural boundaries**
 - UI components must not query a DB directly; business logic must not import UI types.
-- Flag DB calls inside loops (N+1) — note the fix (batch fetch), skip deep profiling.
+- Handlers/controllers/routes validate input and delegate; data access stays in its own
+  layer. The pack names the layers for each stack.
+- Flag data-store calls inside loops (N+1), SQL or NoSQL, and unbounded scans. Note the fix
+  (batch read, pagination), skip deep profiling.
+- Infrastructure templates: least-privilege IAM, no hardcoded account IDs/ARNs, no secrets
+  in plain parameters (see the CloudFormation pack).
 
 **Confidence gate** — before reporting, score each candidate finding 0-100 confidence (likely
 false positive or pre-existing issue scores low; a clear, explicit rule violation or bug scores
