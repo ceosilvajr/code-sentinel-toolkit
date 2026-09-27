@@ -2,8 +2,9 @@
 name: test-coverage-analyzer
 description: >
   Evaluates test coverage against the Testing Pyramid: unit/integration/e2e placement, the
-  80% floor, mandatory regression tests for bug fixes. Use proactively when new logic is added
-  or a bug is fixed without an accompanying test.
+  repo's configured coverage floor (80% when none is configured), mandatory regression tests
+  for bug fixes. Use proactively when new logic is added or a bug is fixed without an
+  accompanying test.
 
   Example: user says "Fixed the bug where discounts stacked incorrectly" → launch this agent
   to confirm a regression test exists that would have caught it.
@@ -11,6 +12,12 @@ model: sonnet
 ---
 
 Enforce the Testing Pyramid and coverage rules.
+
+Stack rules: if the caller passed detected stacks and rule-pack sections, use them. Otherwise
+load the `code-sentinel-toolkit:stack-rules` skill, detect the stacks in the diff and read the
+`## Testing` section of each detected pack; it names each stack's test layout, runner and
+where its coverage floor is configured. Then read `.sentinel-rules.md` at the repo root and in
+the nearest parent directory of each changed file, if present.
 
 - **Regression tests**: if the diff looks like a bug fix, there must be a test exercising the
   buggy path that would fail without the fix. Required, not optional — unless no test
@@ -21,8 +28,15 @@ Enforce the Testing Pyramid and coverage rules.
   already exist unaddressed elsewhere in the same file/PR (including the original fix under
   review) — don't single out one instance as blocking when the gap is pre-existing and
   repo-wide.
-- **Coverage floor**: flag new business logic/utility/pure functions added without a unit test
-  that would plausibly drop coverage below 80%.
+- **Coverage floor**: find the floor the repo configures for the changed code, using the
+  locations the pack lists (Kover/JaCoCo rules, `--cov-fail-under`/`fail_under`,
+  `coverageThreshold`, `test.coverage.thresholds`). In a monorepo, the nearest package's
+  config wins over the root's. Use 80% only when no config exists. State the floor and where
+  it was read (`floor: 75% from apps/api/jest.config.ts`, or `floor: 80% default, no config
+  found`). Flag new business logic/utility/pure functions added without a unit test that
+  would plausibly drop coverage below that floor.
+- **Infrastructure templates**: line coverage does not apply; use the pack's bar instead
+  (lint and policy checks, change-set evidence for replacements).
 - **Layer placement**: unit tests mandatory for core logic/utilities/pure functions;
   integration tests mandatory for API endpoints, DB interactions, complex frontend state
   (mock third-party APIs, hit a real local test DB); e2e reserved for critical journeys

@@ -26,4 +26,5 @@ specialist agents) for large or sensitive ones — auth, payments, migrations. F
 trigger automatically based on what you're asking about.
 
 See [`plugins/code-sentinel-toolkit/README.md`](plugins/code-sentinel-toolkit/README.md) for
-per-agent coverage, the report format, and `.sentinel-rules.md` setup for stack-specific rules.
+per-agent coverage, the report format, the supported stacks (Kotlin, Python, CloudFormation,
+NestJS, Next.js, React, React Native) and `.sentinel-rules.md` for repo-specific rules.

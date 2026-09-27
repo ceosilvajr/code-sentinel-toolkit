@@ -8,25 +8,34 @@ Run the mandatory pre-flight PR review.
 1. **Scope**: use `$ARGUMENTS` if given (minus any `--full` flag), else the unstaged changes.
    Get the touched file list and line count (`git diff --stat`) — not the full diff content —
    to decide scope, tier, and routing below. State the scope used.
-2. **Rules**: check repo root for `.sentinel-rules.md`; if present, read it and pass its
-   contents to every agent below as additional binding context. Universal standards always
-   apply regardless; don't call out its absence in the report.
+2. **Rules**: load the `code-sentinel-toolkit:stack-rules` skill and detect the stack of each
+   changed file with its detection table. Read each detected pack from the skill's
+   `references/`. Then check for `.sentinel-rules.md` at the repo root and in the nearest
+   parent directory of each changed file; if present, read them. Pass the stack list, the
+   relevant pack sections and `.sentinel-rules.md` contents to every agent below as binding
+   context. Universal standards always apply regardless; don't call out a missing
+   `.sentinel-rules.md` in the report. State the stacks in one line (e.g. "Stacks: nextjs
+   (apps/web), python (services/api)"), or "Stacks: none detected, universal rules only".
 3. **Pick a tier.** Default to **Lite** unless any of these hold, in which case use **Full**:
    - `--full` was passed, or the user asked for a thorough/full review.
-   - More than ~150 lines changed.
+   - More than ~150 lines changed, not counting files the detected packs list under
+     `## PR size exclusions` (lockfiles, generated code, build output).
    - Any touched path suggests auth, payments/billing, or a migration (matches
-     `auth|payment|billing|migrat|security`, case-insensitive).
+     `auth|payment|billing|migrat|security`, case-insensitive), or matches a detected pack's
+     `## Sensitive paths`.
    State the tier and the reason in one line under the scope statement (e.g. "Tier: Lite — 38
    lines changed, no sensitive paths. Add --full to force the complete pipeline.").
 4. **Launch:**
    - **Lite** → launch `quick-reviewer` only.
    - **Full** → select and launch the specialist agents: always `code-reviewer`,
      `silent-failure-hunter`, `test-coverage-analyzer`, `pr-contract-checker`; add
-     `type-design-reviewer` only if the diff adds/changes a type, interface, DTO, or schema;
-     add `state-sync-guardian` only if the diff touches frontend/UI files. Note any skipped
+     `type-design-reviewer` only if the diff adds/changes a type, interface, DTO, or schema
+     in a file whose pack does not mark Typing "Not applicable"; add `state-sync-guardian`
+     only if the diff touches react, nextjs or react-native files. Note any skipped
      specialist and why.
    Either way (via Task tool, in parallel where more than one agent runs): pass the scope
-   description and `.sentinel-rules.md` contents if found, and let each agent pull the actual
+   description, the stack list, the pack sections that agent owns (see the skill's
+   section-owner table) and `.sentinel-rules.md` contents if found, and let each agent pull the actual
    diff content itself via `git diff` inside its own isolated context, rather than including
    the full diff in this command's own context.
 5. **Merge** (Full tier only): de-duplicate overlapping findings across agents (keep the more

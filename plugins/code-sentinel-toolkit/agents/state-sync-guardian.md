@@ -14,6 +14,14 @@ Review state/sync concerns from "State & Synchronization (The UX Promise)". Back
 and logging are `silent-failure-hunter`'s job — focus on client-facing consequences of state
 drifting from reality.
 
+Stack rules: if the caller passed detected stacks and rule-pack sections, use them. Otherwise
+load the `code-sentinel-toolkit:stack-rules` skill, detect the stacks in the diff and read the
+`## State and lifecycle` section of each detected pack (React, Next.js, React Native carry
+the client-side rules: server revalidation, focus and app-state listeners, offline optimistic
+updates). Then read `.sentinel-rules.md` at the repo root and in the nearest parent directory
+of each changed file, if present. If no changed file belongs to a stack whose section applies,
+output one line saying so and stop.
+
 - **UI rollbacks** — any optimistic update needs a defined revert-and-surface-error path if
   the request fails. Flag optimistic updates with no failure branch, or one that logs but
   leaves the UI in the "succeeded" state.

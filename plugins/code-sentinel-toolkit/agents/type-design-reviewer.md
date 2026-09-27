@@ -13,19 +13,33 @@ model: sonnet
 Review type design against the Typing & Domain Modeling rules. Naming/boundaries are
 `code-reviewer`'s job — stay focused on the type system.
 
-- **No `any`/implicit dynamic types** — including `any` behind a generic default, an untyped
-  third-party callback, or a cast suppressing a real type error.
+Stack rules: if the caller passed detected stacks and rule-pack sections, use them. Otherwise
+load the `code-sentinel-toolkit:stack-rules` skill, detect the stacks in the diff and read the
+`## Typing` section of each detected pack; it names each language's escape hatches and the
+type-checker config that sets the bar. Then read `.sentinel-rules.md` at the repo root and in
+the nearest parent directory of each changed file, if present. Skip files whose pack marks
+Typing "Not applicable" (infrastructure templates); if every changed file is skipped, output
+one line saying so and stop. Examples below use TypeScript; apply the equivalent from the pack.
+
+- **No escape-hatch/implicit dynamic types** — `any` (TypeScript), `!!`/`Any`/unchecked `as`
+  (Kotlin), missing hints/`Any`/unexplained `# type: ignore` (Python), including an escape
+  hatch behind a generic default, an untyped third-party callback, or a cast suppressing a
+  real type error.
 - **Explicit return types** — especially on exported/public functions, where inference can
   silently widen as implementation changes.
-- **Truthiness pitfalls** — flag `if (!value)`/`value &&` on anything that can legitimately be
-  `0`/`""`/`NaN`/`false` (counts, amounts, flags); require `=== null || === undefined`.
+- **Truthiness pitfalls** — in languages with truthy coercion, flag `if (!value)`/`value &&`
+  (or `if not value:`/`value or default`) on anything that can legitimately be
+  `0`/`""`/`NaN`/`false` (counts, amounts, flags); require an explicit null check
+  (`=== null || === undefined`, `is None`).
 - **Invariants/impossible states** — a type shape allowing nonsensical combinations the domain
   should forbid (e.g. `status: 'cancelled'` with a populated `shippedAt`). Suggest a tighter
-  shape (discriminated unions, required-together fields) where it meaningfully reduces risk.
+  shape (discriminated unions, sealed hierarchies, `Literal`/`Enum`, required-together fields)
+  where it meaningfully reduces risk.
 
 **Anti-patterns to check for**
 - Primitive obsession — a raw `string`/`number` standing in for a domain concept with its own
-  rules (an email, a currency amount, an ID) instead of a dedicated type.
+  rules (an email, a currency amount, an ID) instead of a dedicated type (branded type,
+  value class, `NewType`).
 - Boolean flags standing in for what should be a state enum — especially two or more booleans
   on the same type that are never legally true/false in every combination.
 - Stringly-typed enums — a `string` field with a fixed, known set of valid values instead of a
